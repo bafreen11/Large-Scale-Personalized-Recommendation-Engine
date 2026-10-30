@@ -1,0 +1,10 @@
+{
+  "dcn": {
+    "val_auc": 0.7756,
+    "val_loss": 0.567
+  },
+  "wide_deep": {
+    "val_auc": 0.7678,
+    "val_loss": 0.5724
+  }
+}

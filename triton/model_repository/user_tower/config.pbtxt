@@ -1,0 +1,12 @@
+name: "user_tower"
+platform: "tensorflow_savedmodel"
+max_batch_size: 1024
+input [
+  { name: "user_seq"   data_type: TYPE_INT32 dims: [ 50 ] },
+  { name: "user_dense" data_type: TYPE_FP32  dims: [ 22 ] }
+]
+output [
+  { name: "embedding" data_type: TYPE_FP32 dims: [ 64 ] }
+]
+dynamic_batching { max_queue_delay_microseconds: 2000 }
+instance_group [ { kind: KIND_CPU count: 1 } ]

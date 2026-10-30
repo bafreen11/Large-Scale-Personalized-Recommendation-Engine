@@ -1,0 +1,31 @@
+{
+  "variants": {
+    "dcn": {
+      "users": 143,
+      "impressions": 1430,
+      "clicks": 76,
+      "ctr": 0.05315,
+      "ndcg@10": 0.0655,
+      "recall@10": 0.0348
+    },
+    "wide_deep": {
+      "users": 146,
+      "impressions": 1460,
+      "clicks": 64,
+      "ctr": 0.04384,
+      "ndcg@10": 0.0516,
+      "recall@10": 0.0312
+    }
+  },
+  "ctr_ztest": {
+    "z": 1.166,
+    "p_value": 0.2438,
+    "significant_at_0.05": false,
+    "winner": "no significant difference"
+  },
+  "latency_ms_per_request": {
+    "uncached": 7.88,
+    "cached": 0.002,
+    "cache_backend": "memory"
+  }
+}

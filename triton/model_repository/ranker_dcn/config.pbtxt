@@ -1,0 +1,14 @@
+name: "ranker_dcn"
+platform: "tensorflow_savedmodel"
+max_batch_size: 4096
+input [
+  { name: "user_seq"   data_type: TYPE_INT32 dims: [ 50 ] },
+  { name: "user_dense" data_type: TYPE_FP32  dims: [ 22 ] },
+  { name: "item_idx"   data_type: TYPE_INT32 dims: [ 1 ] },
+  { name: "item_dense" data_type: TYPE_FP32  dims: [ 57 ] }
+]
+output [
+  { name: "score" data_type: TYPE_FP32 dims: [ 1 ] }
+]
+dynamic_batching { max_queue_delay_microseconds: 2000 }
+instance_group [ { kind: KIND_CPU count: 1 } ]

@@ -1,0 +1,24 @@
+# data and trained artefacts (rebuilt by the pipeline)
+movie_lens_data/
+data/
+models/
+triton/model_repository/*/1/
+
+# local leftovers
+logs/
+*.log
+files/
+files.zip
+
+# python / spark / jupyter
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+spark-warehouse/
+metastore_db/
+derby.log
+
+# editor / tooling
+.vscode/
+.claude/settings.local.json

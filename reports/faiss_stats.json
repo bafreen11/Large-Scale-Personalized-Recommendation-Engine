@@ -1,0 +1,10 @@
+{
+  "items_indexed": 25985,
+  "dim": 65,
+  "nlist": 644,
+  "nprobe": 32,
+  "pop_prior": 0.0,
+  "ivf_recall_vs_exact@200": 0.908,
+  "flat_ms_per_query": 0.773,
+  "ivf_ms_per_query": 0.105
+}

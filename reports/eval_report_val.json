@@ -1,0 +1,38 @@
+{
+  "warm": {
+    "split": "val",
+    "users": 432,
+    "candidate_recall@200+50pop": 0.368,
+    "methods": {
+      "popularity": {
+        "recall@10": 0.0525,
+        "ndcg@10": 0.0825
+      },
+      "two_tower": {
+        "recall@10": 0.0253,
+        "ndcg@10": 0.0467
+      },
+      "two_tower+dcn": {
+        "recall@10": 0.0411,
+        "ndcg@10": 0.0597
+      },
+      "two_tower+wide_deep": {
+        "recall@10": 0.0293,
+        "ndcg@10": 0.0577
+      }
+    }
+  },
+  "cold_start": {
+    "users": 995,
+    "methods": {
+      "popularity": {
+        "recall@10": 0.0678,
+        "ndcg@10": 0.2977
+      },
+      "served_fallback": {
+        "recall@10": 0.0469,
+        "ndcg@10": 0.2574
+      }
+    }
+  }
+}

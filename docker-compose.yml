@@ -1,0 +1,17 @@
+# Optional infrastructure for serving. The Python code falls back to in-process models / an in-memory
+# cache when these are not running.
+#   docker compose up -d redis            # step 6 cache
+#   python -m src.serving.export_triton && docker compose up -d triton   # step 7 model server
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+
+  triton:
+    # 24.01 still ships the TensorFlow 2 backend needed for SavedModels
+    image: nvcr.io/nvidia/tritonserver:24.01-py3
+    command: ["tritonserver", "--model-repository=/models", "--strict-model-config=false"]
+    ports: ["8000:8000", "8001:8001", "8002:8002"]   # HTTP, gRPC, metrics
+    volumes: ["./triton/model_repository:/models"]
+    shm_size: 1g

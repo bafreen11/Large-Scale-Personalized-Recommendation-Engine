@@ -1,0 +1,4 @@
+* text=auto
+# shell scripts run inside WSL: CRLF breaks them
+*.sh text eol=lf
+*.py text eol=lf
