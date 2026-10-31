@@ -19,8 +19,8 @@ ratings ──► time split ──► Spark features ──► two-tower (TFRS)
 | 3 | Two-tower retrieval model in TensorFlow Recommenders | ✅ trained on a sample | `src/retrieval/` |
 | 4 | FAISS index of item embeddings | ✅ | `src/index/` |
 | 5 | Deep ranking: DCN-v2 and Wide & Deep | ✅ trained on a sample | `src/ranking/` |
-| 6 | Cold start (popularity + content-based) and Redis cache | ✅ | `src/serving/` |
-| 7 | Triton serving, Airflow retraining, A/B test (NDCG, Recall@K, CTR) | ✅ code + config; A/B test run as a replay | `src/serving/`, `src/evaluation/`, `triton/`, `airflow/` |
+| 6 | Cold start (popularity + content-based) and Redis cache | ✅ tested with Redis in Docker | `src/serving/` |
+| 7 | Triton serving, Airflow retraining, A/B test (NDCG, Recall@K, CTR) | ✅ API served through Triton + Redis; Airflow DAG loads and runs tasks; A/B test run as a replay | `src/serving/`, `src/evaluation/`, `triton/`, `airflow/` |
 
 Steps 3–7 were trained and evaluated on **8% of users** (12K users, 1.8M ratings) so each model trains in
 minutes on CPU. `SAMPLE_PCT=100` runs everyone, given enough RAM.
@@ -42,7 +42,7 @@ Offline evaluation (`reports/eval_report_val.json`): 432 warm users, top-10. Mov
 | Candidate recall (200 two-tower + 50 trending) | 36.8% of relevant movies reach the ranker |
 | FAISS IVF vs exact search | 90.8% of the exact top-200 found, **0.105 ms vs 0.77 ms** per query (26K items) |
 | Cold start (995 new users, top-10) | popularity NDCG 0.298 · content fallback 0.257 |
-| Serving latency | 7.9 ms uncached (tower + FAISS + ranker), 0.002 ms from cache |
+| Serving latency | 7.9 ms uncached (tower + FAISS + ranker), 0.002 ms from the in-memory cache, ~0.9 ms per Redis read (Docker, from WSL) |
 
 A/B test (`reports/ab_test_report.json`): a replay of the test period, with users split 50/50 by a stable hash.
 
@@ -117,12 +117,28 @@ Optional infrastructure: the code falls back to an in-memory cache and in-proces
 docker compose up -d redis                                        # Redis cache
 python -m src.serving.export_triton && docker compose up -d triton
 TRITON_URL=localhost:8000 uvicorn src.serving.app:app --port 8080 # models served by Triton
+curl localhost:8080/health    # {"cache":"redis","user_tower":"triton","rankers":{"dcn":"triton","wide_deep":"triton"}}
 ```
+
+Tested with Triton 24.01 (CPU) in Docker Desktop: all three models load as `READY`, return exactly the same scores
+as the local SavedModels (max difference 0.0), and take ~4.5 ms for the user tower and ~7–9 ms to score 250 candidates.
 
 ### Retraining
 
-`airflow/dags/recsys_retrain.py` chains every step weekly (`@weekly`, one retry, no catch-up). Copy it into
-`$AIRFLOW_HOME/dags/`. Airflow is best installed in its own environment.
+`airflow/dags/recsys_retrain.py` chains every step weekly (`@weekly`, one retry, no catch-up). Airflow lives in
+its own venv so its pins don't clash with TensorFlow / Spark:
+
+```bash
+uv venv --python 3.11 ~/venvs/airflow
+uv pip install --python ~/venvs/airflow/bin/python "apache-airflow==2.10.5" \
+    --constraint https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.11.txt
+source ~/venvs/airflow/bin/activate && export AIRFLOW_HOME=~/airflow
+mkdir -p ~/airflow/dags && ln -sf "$PWD/airflow/dags/recsys_retrain.py" ~/airflow/dags/
+airflow db migrate
+airflow tasks list recsys_retrain                                 # the 10 steps
+airflow tasks test recsys_retrain export_triton 2026-10-31         # run one step
+airflow standalone                                                # UI on localhost:8080 (stop the API first)
+```
 
 ## Design notes
 

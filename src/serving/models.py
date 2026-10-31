@@ -1,5 +1,7 @@
 """Model backends: the same call works against Triton (if TRITON_URL is set and the model is loaded there)
 or a local SavedModel in this process. Inputs/outputs follow the src.training.data feature contract."""
+import threading
+
 import numpy as np
 import tensorflow as tf
 
@@ -17,11 +19,20 @@ class LocalModel:
 
 
 class TritonModel:
-    def __init__(self, name, client):
+    def __init__(self, name, url=TRITON_URL):
         import tritonclient.http as http
-        self.http, self.client, self.name = http, client, name
-        self.output = client.get_model_metadata(name)["outputs"][0]["name"]
+        self.http, self.name, self.url = http, name, url
+        # tritonclient.http is gevent-based and a client only works in the thread that created it,
+        # while FastAPI runs requests on a thread pool -> one client per thread
+        self.local = threading.local()
+        self.output = self.client.get_model_metadata(name)["outputs"][0]["name"]
         self.backend = "triton"
+
+    @property
+    def client(self):
+        if not hasattr(self.local, "client"):
+            self.local.client = self.http.InferenceServerClient(self.url)
+        return self.local.client
 
     def __call__(self, feats):
         inputs = []
@@ -39,7 +50,7 @@ def load_model(name, local_path):
             import tritonclient.http as http
             client = http.InferenceServerClient(TRITON_URL)
             if client.is_model_ready(name):
-                return TritonModel(name, client)
+                return TritonModel(name, TRITON_URL)
             print(f"[serving] Triton has no ready model '{name}', using local SavedModel")
         except Exception as e:      # server down / not installed -> serve in-process
             print(f"[serving] Triton unavailable ({e.__class__.__name__}), using local SavedModel for {name}")

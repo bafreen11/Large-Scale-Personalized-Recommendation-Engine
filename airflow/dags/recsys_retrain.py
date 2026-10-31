@@ -27,7 +27,7 @@ STEPS = [
 with DAG(
     dag_id="recsys_retrain",
     schedule="@weekly",
-    start_date=datetime(2026, 11, 1),
+    start_date=datetime(2026, 10, 1),
     catchup=False,
     max_active_runs=1,
     default_args={"retries": 1, "retry_delay": timedelta(minutes=10)},
