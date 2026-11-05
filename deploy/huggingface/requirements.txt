@@ -1,0 +1,10 @@
+# Serving only (same versions as the training environment)
+tensorflow==2.15.1
+tensorflow-recommenders==0.7.3
+faiss-cpu==1.8.0
+numpy==1.26.4
+pandas==2.2.3
+pyarrow==17.0.0
+redis==5.2.1
+fastapi==0.115.6
+uvicorn==0.32.1

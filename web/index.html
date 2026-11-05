@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Recommender – live demo</title>
+<style>
+  :root { --ink: #1f2937; --muted: #6b7280; --line: #e5e7eb; --brand: #1f3a5f; --accent: #1a6e7a; --bad: #b91c1c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #f6f7f9; }
+  header { background: var(--brand); color: #fff; padding: 28px 20px; }
+  header h1 { margin: 0 0 4px; font-size: 24px; }
+  header p { margin: 0; opacity: .85; max-width: 900px; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 20px 48px; display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tabs button { flex: 1; }
+  .tabs button.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, select { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; }
+  button { font: inherit; border-radius: 6px; padding: 8px 14px; cursor: pointer; border: 1px solid #d1d5db; background: #fff; }
+  button.primary { background: var(--brand); color: #fff; border-color: var(--brand); width: 100%; padding: 10px; font-weight: 600; margin-top: 14px; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .chip { background: #eef2f7; border: 1px solid #d6dde8; border-radius: 999px; padding: 3px 10px; font-size: 13px; cursor: pointer; }
+  .chip.liked { background: #e6f2f3; border-color: #b9dadd; }
+  .search { position: relative; }
+  .hits { position: absolute; z-index: 5; left: 0; right: 0; background: #fff; border: 1px solid var(--line); border-radius: 6px; margin-top: 2px; max-height: 260px; overflow: auto; box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+  .hits div { padding: 7px 10px; cursor: pointer; font-size: 14px; }
+  .hits div:hover { background: #f3f4f6; }
+  .row { margin-bottom: 12px; }
+  .status { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  ol { padding-left: 22px; margin: 0; }
+  li { padding: 6px 0; border-bottom: 1px solid #f1f2f4; }
+  li:last-child { border-bottom: 0; }
+  .score { display: inline-block; height: 6px; background: var(--accent); border-radius: 3px; vertical-align: middle; margin-left: 8px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .badge { font-size: 12px; background: #f3f4f6; border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .error { color: var(--bad); white-space: pre-line; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; margin-right: 6px; }
+  .dot.on { background: #047857; }
+  a { color: var(--brand); }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding-bottom: 32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Movie Recommender</h1>
+  <p>Two-tower retrieval (TensorFlow Recommenders) → FAISS → DCN-v2 / Wide &amp; Deep ranking, trained on MovieLens 25M.
+     New users get content-based or popular picks.</p>
+</header>
+
+<main>
+  <section class="card">
+    <div class="tabs">
+      <button type="button" class="active" data-tab="known">Existing user</button>
+      <button type="button" data-tab="new">New user</button>
+    </div>
+
+    <div id="tab-known">
+      <div class="row"><label for="uid">MovieLens user id</label>
+        <input id="uid" type="number" min="1" step="1" value="39"></div>
+      <div class="muted">Try one of these users from the training sample:</div>
+      <div class="chips" id="sample-users"></div>
+    </div>
+
+    <div id="tab-new" hidden>
+      <div class="row search"><label for="q">Search movies you like (pick 1–5)</label>
+        <input id="q" type="text" placeholder="e.g. matrix, toy story, godfather" autocomplete="off">
+        <div class="hits" id="hits" hidden></div></div>
+      <div class="chips" id="liked"></div>
+      <div class="muted">Leave it empty to see what is popular right now.</div>
+    </div>
+
+    <div class="row" style="margin-top:14px"><label for="k">How many movies</label>
+      <select id="k"><option>5</option><option selected>10</option><option>20</option></select></div>
+    <button class="primary" id="go" type="button">Recommend</button>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>Recommendations</h2>
+    <p class="muted" id="placeholder">Pick a user, or switch to <b>New user</b> and choose a few movies, then press <b>Recommend</b>.</p>
+    <div id="output" hidden>
+      <div class="badges" id="badges"></div>
+      <ol id="list"></ol>
+    </div>
+    <p class="error" id="error" hidden></p>
+    <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+    <p class="muted"><span class="dot" id="dot"></span><span id="api-state">Checking the API…</span></p>
+    <p class="muted">API: <a id="api-link" target="_blank" rel="noopener"></a> · <a id="docs-link" target="_blank" rel="noopener">interactive docs</a></p>
+  </section>
+</main>
+
+<footer>
+  Code: <a href="https://github.com/bafreen11/Large-Scale-Personalized-Recommendation-Engine">github.com/bafreen11/Large-Scale-Personalized-Recommendation-Engine</a>
+</footer>
+
+<script src="config.js"></script>
+<script>
+  const API = (new URLSearchParams(location.search).get("api") || window.RECSYS_API_URL).replace(/\/$/, "");
+  const $ = (id) => document.getElementById(id);
+  // from the 8% training sample, few to many ratings; 3373 and 40818 are in the DCN group, the others Wide & Deep
+  const SAMPLE_USERS = [39, 3373, 63593, 40818, 162047];
+  const SOURCES = {
+    "two_tower+dcn": "Two-tower + FAISS → DCN ranker (A/B variant A)",
+    "two_tower+wide_deep": "Two-tower + FAISS → Wide & Deep ranker (A/B variant B)",
+    "cold_start_content": "New user: movies similar to the ones you like",
+    "cold_start_popular": "New user: popular in the last 30 days",
+  };
+  let tab = "known";
+  const liked = new Map();   // movieId -> title
+
+  $("api-link").href = API; $("api-link").textContent = API.replace(/^https?:\/\//, "");
+  $("docs-link").href = API + "/docs";
+
+  SAMPLE_USERS.forEach((u) => {
+    const c = document.createElement("span");
+    c.className = "chip"; c.textContent = "user " + u;
+    c.onclick = () => { $("uid").value = u; recommend(); };
+    $("sample-users").appendChild(c);
+  });
+
+  document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    tab = b.dataset.tab;
+    document.querySelectorAll("[data-tab]").forEach((x) => x.classList.toggle("active", x === b));
+    $("tab-known").hidden = tab !== "known"; $("tab-new").hidden = tab !== "new";
+  }));
+
+  async function call(path) {
+    // a sleeping Space restarts on the first request and loads the models
+    const slow = setTimeout(() => { $("status").textContent = "Waking up the free server – this can take a minute or two…"; }, 4000);
+    try {
+      const res = await fetch(API + path);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : "Request failed (" + res.status + ")");
+      $("dot").classList.add("on"); $("api-state").textContent = "API online";
+      return body;
+    } catch (e) {
+      throw new Error(e.message === "Failed to fetch" ? "Could not reach the API at " + API + "." : e.message);
+    } finally {
+      clearTimeout(slow);
+    }
+  }
+
+  function renderLiked() {
+    $("liked").innerHTML = "";
+    liked.forEach((title, id) => {
+      const c = document.createElement("span");
+      c.className = "chip liked"; c.title = "Remove"; c.textContent = title + "  ✕";
+      c.onclick = () => { liked.delete(id); renderLiked(); };
+      $("liked").appendChild(c);
+    });
+  }
+
+  let timer;
+  $("q").addEventListener("input", () => {
+    clearTimeout(timer);
+    const q = $("q").value.trim();
+    if (q.length < 2) { $("hits").hidden = true; return; }
+    timer = setTimeout(async () => {
+      try {
+        const hits = await call("/movies/search?limit=8&q=" + encodeURIComponent(q));
+        $("hits").innerHTML = "";
+        hits.forEach((m) => {
+          const d = document.createElement("div");
+          d.textContent = m.title;
+          d.onclick = () => { if (liked.size < 5) liked.set(m.movieId, m.title); renderLiked(); $("q").value = ""; $("hits").hidden = true; };
+          $("hits").appendChild(d);
+        });
+        $("hits").hidden = hits.length === 0;
+      } catch (e) { /* search is best-effort */ }
+    }, 250);
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".search")) $("hits").hidden = true; });
+
+  async function recommend() {
+    const k = $("k").value;
+    let path;
+    if (tab === "known") {
+      const uid = parseInt($("uid").value, 10);
+      if (!(uid > 0)) { showError("Enter a user id (a positive number)."); return; }
+      path = `/recommend/${uid}?k=${k}`;
+    } else {
+      // a fresh id the models have never seen -> cold-start path
+      const uid = 900000000 + Math.floor(Math.random() * 99999999);
+      path = `/recommend/${uid}?k=${k}&liked=${[...liked.keys()].join(",")}`;
+    }
+    $("go").disabled = true; $("status").textContent = "Loading…"; $("error").hidden = true;
+    const t0 = performance.now();
+    try {
+      const r = await call(path);
+      const ms = Math.round(performance.now() - t0);
+      $("placeholder").hidden = true; $("output").hidden = false;
+      $("badges").innerHTML = "";
+      // the A/B split only matters when a ranker is used (not for the cold-start fallbacks)
+      [SOURCES[r.source] || r.source, r.source.startsWith("two_tower") ? "A/B variant: " + r.variant : null,
+       r.cached ? "served from cache" : "freshly computed", ms + " ms"]
+        .filter(Boolean).forEach((t) => { const b = document.createElement("span"); b.className = "badge"; b.textContent = t; $("badges").appendChild(b); });
+      $("list").innerHTML = "";
+      const top = Math.max(...r.items.map((i) => i.score), 1e-9);
+      r.items.forEach((m) => {
+        const li = document.createElement("li");
+        li.textContent = m.title;
+        if (m.score > 0) {
+          const bar = document.createElement("span");
+          bar.className = "score"; bar.style.width = Math.round(60 * m.score / top) + "px";
+          bar.title = "ranker score " + m.score;
+          li.appendChild(bar);
+        }
+        $("list").appendChild(li);
+      });
+      if (!r.items.length) $("list").innerHTML = "<li class='muted'>No recommendations.</li>";
+      $("status").textContent = "";
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      $("go").disabled = false;
+    }
+  }
+
+  function showError(msg) { $("error").textContent = msg; $("error").hidden = false; $("status").textContent = ""; }
+
+  $("go").addEventListener("click", recommend);
+  $("uid").addEventListener("keydown", (e) => { if (e.key === "Enter") recommend(); });
+  call("/health").catch(() => { $("api-state").textContent = "API not reachable yet (it may still be starting)."; });
+</script>
+</body>
+</html>

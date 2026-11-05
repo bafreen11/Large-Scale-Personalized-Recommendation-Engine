@@ -3,6 +3,7 @@ movie_lens_data/
 data/
 models/
 triton/model_repository/*/1/
+build/
 
 # local leftovers
 logs/

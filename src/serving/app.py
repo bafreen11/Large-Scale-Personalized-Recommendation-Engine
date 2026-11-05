@@ -7,13 +7,18 @@ Run from the project root:
     GET  /recommend/{user_id}?k=10&liked=1,260,1196   liked = movieIds, only used for brand-new users
     POST /feedback   {"user_id": 1, "movie_id": 260, "variant": "dcn"}   -> a click on a shown movie
     GET  /ab/report  CTR per variant + two-proportion z-test
+    GET  /movies/search?q=matrix   movieIds for the "movies you like" picker of the web page
 Impressions and clicks are appended to data/ab_events.jsonl.
 """
 import json
+import os
 import time
 from collections import Counter
 
+import numpy as np
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from src.common.config import ROOT
@@ -22,6 +27,9 @@ from src.serving.recommender import VARIANTS, Recommender, ab_variant
 
 EVENTS = ROOT / "data" / "ab_events.jsonl"
 app = FastAPI(title="Personalized Recommendation Engine")
+# the web/ page (Vercel / Netlify) calls the API from another origin; CORS_ORIGINS restricts it
+app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+                   allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 state = {}
 impressions, clicks = Counter(), Counter()
 
@@ -29,11 +37,26 @@ impressions, clicks = Counter(), Counter()
 @app.on_event("startup")
 def load():
     state["rec"] = Recommender()
+    state["titles_lower"] = np.char.lower(state["rec"].cat.titles.astype(str))
 
 
 def log(event):
     with EVENTS.open("a") as f:
         f.write(json.dumps({"ts": time.time(), **event}) + "\n")
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/docs")
+
+
+@app.get("/movies/search")
+def search_movies(q: str = Query(min_length=2, max_length=100), limit: int = Query(10, ge=1, le=50)):
+    """Title search, most-rated first."""
+    cat = state["rec"].cat
+    hits = np.flatnonzero(np.char.find(state["titles_lower"], q.lower()) >= 0)
+    hits = hits[np.argsort(-cat.pop_all[hits], kind="stable")][:limit]
+    return [{"movieId": int(cat.movie_ids[i]), "title": str(cat.titles[i])} for i in hits]
 
 
 @app.get("/health")
