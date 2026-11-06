@@ -1,9 +1,9 @@
 # data and trained artefacts (rebuilt by the pipeline)
-movie_lens_data/
-data/
-models/
+/movie_lens_data/
+/data/
+/models/
 triton/model_repository/*/1/
-build/
+/build/
 
 # local leftovers
 logs/

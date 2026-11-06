@@ -1,0 +1,17 @@
+# Render Blueprint: deploys the recommendation API (deploy/render/Dockerfile -> src/serving/app.py)
+# on Render's free plan. Render dashboard -> New -> Blueprint -> pick this repository.
+# The free plan sleeps after 15 idle minutes; the first request then takes ~1 minute.
+services:
+  - type: web
+    name: recsys-api-bafreen11
+    runtime: docker
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # The free plan caps memory at 512 MB and the image needs ~450 MB with both rankers.
+      # If the service gets OOM-killed, set this to "dcn" to load one ranker instead of two.
+      - key: RANKER_VARIANTS
+        value: dcn,wide_deep

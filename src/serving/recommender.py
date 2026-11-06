@@ -4,6 +4,7 @@
     new user:    cold-start fallback (popularity, or content-based if they told us movies they like)
     every list is cached (Redis or in-memory) per (variant, user, k)
 """
+import os
 import zlib
 
 import faiss
@@ -16,12 +17,14 @@ from src.serving.cold_start import ColdStart
 from src.serving.models import load_model
 from src.training.data import Catalog, Users
 
-VARIANTS = ("dcn", "wide_deep")
+# Both rankers are loaded so the A/B test has two arms. On a memory-capped host (Render's
+# free plan caps at 512 MB) set RANKER_VARIANTS=dcn to load one ranker and save ~50 MB.
+VARIANTS = tuple(v.strip() for v in os.environ.get("RANKER_VARIANTS", "dcn,wide_deep").split(",") if v.strip())
 
 
 def ab_variant(user_id):
     """Stable 50/50 A/B assignment: the same user always gets the same ranker."""
-    return VARIANTS[zlib.crc32(str(user_id).encode()) % 2]
+    return VARIANTS[zlib.crc32(str(user_id).encode()) % len(VARIANTS)]
 
 
 class Recommender:
