@@ -35,7 +35,10 @@
   ol { padding-left: 22px; margin: 0; }
   li { padding: 6px 0; border-bottom: 1px solid #f1f2f4; }
   li:last-child { border-bottom: 0; }
-  .score { display: inline-block; height: 6px; background: var(--accent); border-radius: 3px; vertical-align: middle; margin-left: 8px; }
+  .score { display: inline-block; width: 60px; height: 6px; background: #e5e7eb; border-radius: 3px;
+           vertical-align: middle; margin-left: 8px; overflow: hidden; }
+  .score > i { display: block; height: 100%; background: var(--accent); }
+  .scoreval { font-size: 12px; color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
   .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .badge { font-size: 12px; background: #f3f4f6; border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
   .muted { color: var(--muted); font-size: 13px; }
@@ -87,6 +90,7 @@
     <div id="output" hidden>
       <div class="badges" id="badges"></div>
       <ol id="list"></ol>
+      <p class="muted" id="legend" hidden></p>
     </div>
     <p class="error" id="error" hidden></p>
     <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
@@ -201,18 +205,34 @@
        r.cached ? "served from cache" : "freshly computed", ms + " ms"]
         .filter(Boolean).forEach((t) => { const b = document.createElement("span"); b.className = "badge"; b.textContent = t; $("badges").appendChild(b); });
       $("list").innerHTML = "";
-      const top = Math.max(...r.items.map((i) => i.score), 1e-9);
+      // Absolute 0-1 scale, not normalised to the best item: dividing by the top score made the
+      // first bar full width every time and squeezed a whole top-20 into four pixels.
+      let scored = false;
       r.items.forEach((m) => {
         const li = document.createElement("li");
         li.textContent = m.title;
+        const val = document.createElement("span");
+        val.className = "scoreval";
         if (m.score > 0) {
-          const bar = document.createElement("span");
-          bar.className = "score"; bar.style.width = Math.round(60 * m.score / top) + "px";
-          bar.title = "ranker score " + m.score;
-          li.appendChild(bar);
+          scored = true;
+          const track = document.createElement("span");
+          track.className = "score";
+          track.title = "ranker score " + m.score + " on a 0 to 1 scale";
+          const fill = document.createElement("i");
+          fill.style.width = (Math.max(0, Math.min(1, m.score)) * 100).toFixed(1) + "%";
+          track.appendChild(fill);
+          li.appendChild(track);
+          val.textContent = m.score.toFixed(2);
+        } else {
+          val.textContent = "no ranker score";
         }
+        li.appendChild(val);
         $("list").appendChild(li);
       });
+      $("legend").hidden = !r.items.length;
+      $("legend").textContent = scored
+        ? "Bars show the ranker score on an absolute 0 to 1 scale, so a confident list looks different from a weak one."
+        : "Cold-start picks come from the popularity or content-based fallback, which produces no ranker score.";
       if (!r.items.length) $("list").innerHTML = "<li class='muted'>No recommendations.</li>";
       $("status").textContent = "";
     } catch (e) {
