@@ -1,5 +1,9 @@
 # Large-Scale Personalized Recommendation Engine
 
+**Live demo:** [movie-recommender-bafreen11.netlify.app](https://movie-recommender-bafreen11.netlify.app) · **API docs:** [recsys-api-bafreen11.onrender.com/docs](https://recsys-api-bafreen11.onrender.com/docs)
+
+*Both are on free hosting that sleeps after 15 idle minutes, so the first request can take a minute to wake up.*
+
 An end-to-end movie recommender on **MovieLens 25M** (25M ratings, 162K users, 62K movies). It runs on a laptop
 (4 cores, 12 GB RAM, no GPU) under WSL Ubuntu:
 
