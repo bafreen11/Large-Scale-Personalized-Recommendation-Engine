@@ -152,3 +152,17 @@ airflow standalone                                                # UI on localh
   (removing it made retrieval much worse) and accidental-hit removal.
 - **One feature contract** (`src/training/data.py`) is shared by training, evaluation, the API and Triton configs.
 - **Laptop-friendly Spark:** `local[3]`, a 4 GB driver, and scratch space on disk. WSL's `/tmp` lives in RAM.
+
+## Additional Nexvia Capstone Project.
+
+https://github.com/bafreen11/real-time-transaction-fraud-detection
+****
+PaySim Transaction Fraud Detection****
+Live demo: fraud-detection-bafreen11.netlify.app · API docs: fraud-api-bafreen11.onrender.com/docs
+
+Both are on free hosting that sleeps after 15 idle minutes, so the first request can take a minute to wake up.
+
+Fraud detection on the PaySim synthetic mobile-money dataset. It combines a gradient-boosted classifier (XGBoost) with a graph neural network (GraphSAGE) over the account-to-account transaction graph, and serves the model through a FastAPI scoring service fed by a Kafka stream.
+
+
+- 
